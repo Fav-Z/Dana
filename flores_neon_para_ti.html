@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌼 Para Ti</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: radial-gradient(ellipse at 50% 120%, #101820 0%, #06090f 60%, #030507 100%);
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    height: 100vh;
+  }
+  canvas { display: block; position: fixed; top: 0; left: 0; z-index: 1; }
+  .message {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    pointer-events: none;
+    padding: 20px;
+  }
+  h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: clamp(1.6rem, 5.5vw, 3.4rem);
+    color: #fff9d6;
+    text-shadow:
+      0 0 8px  rgba(255, 230, 90, .9),
+      0 0 22px rgba(255, 215, 40, .7),
+      0 0 50px rgba(255, 200, 0, .45),
+      0 0 90px rgba(255, 190, 0, .3);
+    opacity: 0;
+    animation: appear 2.5s ease .8s forwards, breathe 4s ease-in-out 3.5s infinite;
+    letter-spacing: .04em;
+  }
+  p {
+    margin-top: 22px;
+    font-size: clamp(.95rem, 2.6vw, 1.25rem);
+    color: #ffe873;
+    text-shadow: 0 0 10px rgba(255, 220, 60, .8), 0 0 30px rgba(255, 200, 0, .4);
+    opacity: 0;
+    animation: appear 2s ease 2.2s forwards;
+    letter-spacing: .12em;
+  }
+  .heart { color: #ff6b9d; text-shadow: 0 0 12px rgba(255,107,157,.9); }
+  @keyframes appear { to { opacity: 1; } }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50%      { transform: scale(1.02); filter: brightness(1.15); }
+  }
+</style>
+</head>
+<body>
+<canvas id="flores"></canvas>
+<div class="message">
+  <h1>"Eres mi primavera en cada estación"</h1>
+  <p>🌼 Te amo, mi amor <span class="heart">♥</span> 🌼</p>
+</div>
+<script>
+const cv = document.getElementById('flores');
+const cx = cv.getContext('2d');
+let W, H;
+function resize(){ W = cv.width = innerWidth; H = cv.height = innerHeight; }
+addEventListener('resize', resize); resize();
+
+// ---------- Flores neón ----------
+const PETALOS = 8;
+class Flor {
+  constructor(x, y, escala, fase) {
+    this.x = x; this.y = y;
+    this.e = escala;
+    this.fase = fase;
+    this.vel = .25 + Math.random() * .5;
+    this.gira = (Math.random() - .5) * .0015;
+    this.ang = Math.random() * Math.PI * 2;
+    this.pulso = Math.random() * Math.PI * 2;
+  }
+  dibujar(t) {
+    this.ang += this.gira;
+    this.pulso += .03;
+    const brillo = .75 + Math.sin(this.pulso) * .25;
+    const R = 26 * this.e * (1 + Math.sin(this.pulso) * .06);
+    cx.save();
+    cx.translate(this.x, this.y);
+    cx.rotate(this.ang);
+    cx.globalCompositeOperation = 'lighter';
+
+    // pétalos
+    for (let i = 0; i < PETALOS; i++) {
+      cx.save();
+      cx.rotate((Math.PI * 2 / PETALOS) * i);
+      const g = cx.createRadialGradient(0, -R * .55, 0, 0, -R * .55, R * .62);
+      g.addColorStop(0, `rgba(255,246,170,${.9 * brillo})`);
+      g.addColorStop(.5, `rgba(255,222,60,${.45 * brillo})`);
+      g.addColorStop(1, 'rgba(255,190,0,0)');
+      cx.fillStyle = g;
+      cx.beginPath();
+      cx.ellipse(0, -R * .55, R * .3, R * .62, 0, 0, Math.PI * 2);
+      cx.fill();
+      // contorno neón
+      cx.strokeStyle = `rgba(255,240,120,${.55 * brillo})`;
+      cx.lineWidth = 1.2;
+      cx.stroke();
+      cx.restore();
+    }
+    // centro brillante
+    const gc = cx.createRadialGradient(0, 0, 0, 0, 0, R * .4);
+    gc.addColorStop(0, `rgba(255,255,220,${brillo})`);
+    gc.addColorStop(.4, `rgba(255,225,80,${.7 * brillo})`);
+    gc.addColorStop(1, 'rgba(255,200,0,0)');
+    cx.fillStyle = gc;
+    cx.beginPath();
+    cx.arc(0, 0, R * .4, 0, Math.PI * 2);
+    cx.fill();
+    cx.restore();
+  }
+  caer() {
+    this.y += this.vel;
+    this.x += Math.sin(this.y * .012 + this.fase) * .5;
+    if (this.y > H + 70) {
+      this.y = -70;
+      this.x = Math.random() * W;
+    }
+  }
+}
+
+// ---------- Polen / destellos ----------
+class Chispa {
+  constructor() { this.reset(true); }
+  reset(ini) {
+    this.x = Math.random() * W;
+    this.y = ini ? Math.random() * H : Math.random() * H * .3;
+    this.r = .8 + Math.random() * 1.8;
+    this.vy = .15 + Math.random() * .4;
+    this.tw = Math.random() * Math.PI * 2;
+    this.vida = 0; this.max = 200 + Math.random() * 300;
+  }
+  dibujar() {
+    this.tw += .05; this.vida++;
+    this.y += this.vy;
+    const a = (Math.sin(this.tw) * .5 + .5) * (1 - this.vida / this.max) * .8;
+    cx.save();
+    cx.globalCompositeOperation = 'lighter';
+    const g = cx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r * 4);
+    g.addColorStop(0, `rgba(255,250,190,${a})`);
+    g.addColorStop(1, 'rgba(255,220,80,0)');
+    cx.fillStyle = g;
+    cx.beginPath(); cx.arc(this.x, this.y, this.r * 4, 0, Math.PI * 2); cx.fill();
+    cx.restore();
+    if (this.vida > this.max || this.y > H + 10) this.reset(false);
+  }
+}
+
+const flores = [], chispas = [];
+const N_FLORES = Math.min(16, Math.floor(innerWidth / 90));
+for (let i = 0; i < N_FLORES; i++)
+  flores.push(new Flor(Math.random() * W, Math.random() * H, .55 + Math.random() * .9, Math.random() * 10));
+for (let i = 0; i < 70; i++) chispas.push(new Chispa());
+
+function loop() {
+  cx.clearRect(0, 0, W, H);
+  chispas.forEach(c => c.dibujar());
+  flores.forEach(f => { f.caer(); f.dibujar(); });
+  requestAnimationFrame(loop);
+}
+loop();
+
+// tocar/click = estallido de flores
+addEventListener('pointerdown', e => {
+  for (let i = 0; i < 5; i++) {
+    const f = new Flor(
+      e.clientX + (Math.random() - .5) * 140,
+      e.clientY + (Math.random() - .5) * 140,
+      .5 + Math.random() * .7, Math.random() * 10
+    );
+    f.vel = .3;
+    flores.push(f);
+  }
+  if (flores.length > 45) flores.splice(0, flores.length - 45);
+});
+</script>
+</body>
+</html>
